@@ -1,0 +1,40 @@
+# Based on https://github.com/anthropics/claude-code-action/blob/main/examples/claude.yml
+# The "Run Claude Code" step reproduces the snippet from withastro/docs#14640.
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  claude:
+    # Test only: the owner check skips runs started by anyone else on this public repository.
+    if: |
+      github.actor == github.repository_owner && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --mcp-config '{"mcpServers": {"astro-docs": {"type": "http", "url": "https://mcp.docs.astro.build/mcp"}}}'
+            --allowedTools mcp__astro-docs__search_astro_docs
+          # Test only: shows the tool calls in the run summary.
+          display_report: true
